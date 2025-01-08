@@ -8,7 +8,6 @@ import 'package:smart_sentry/ui/views/location/location_view.dart';
 import 'package:stacked/stacked.dart';
 import 'package:smart_sentry/models/appuser.dart';
 import 'package:stacked_services/stacked_services.dart';
-
 import '../../../app/app.router.dart';
 
 class HomeView extends StatelessWidget {
@@ -16,177 +15,290 @@ class HomeView extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
     final navigationService = locator<NavigationService>();
-    // Ensure that `currentUser` is not null and map it to `UserModel`
     final loggedInUser = UserModel(
       id: currentUser?.uid ?? '',
-      name: currentUser?.displayName ?? 'Unknown User',
+      name: '',
       email: currentUser?.email ?? 'No Email',
-      password: '', // Leave password blank as it's not available here
+      password: '',
     );
+
     return ViewModelBuilder<HomeViewModel>.reactive(
       viewModelBuilder: () => HomeViewModel(loggedInUser),
       onModelReady: (model) {
         model.initializeLocationService();
         model.listenToNotifications();
-        model.loadEmergencyContacts(
-            loggedInUser.id); // Load emergency contacts on startup
+        model.loadEmergencyContacts(loggedInUser.id);
+        model.fetchUserName();
       },
       builder: (context, viewModel, child) {
         return Scaffold(
-          backgroundColor: Colors.teal,
+          backgroundColor: Colors.black,
           appBar: AppBar(
-              title: Text('Smart Sentry'),
-              backgroundColor: Colors.greenAccent,
-              actions: [
-                Text("${currentUser?.displayName}"),
-                IconButton(
-                  onPressed: () {
-                    navigationService.navigateToNotificationView();
-                  },
-                  icon: Icon(Icons
-                      .notifications), // Provide the required icon argument
+            elevation: 0,
+            backgroundColor: Colors.black,
+            title: Row(
+              children: [
+                Text(
+                  'SMART SENTRY',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0,
+                  ),
                 ),
-                IconButton(
-                    onPressed: viewModel.logout, icon: Icon(Icons.logout))
-              ]),
+              ],
+            ),
+            actions: [
+              Container(
+                margin: EdgeInsets.only(right: 16),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.transparent,
+                  child: Text(
+                    viewModel.userName.isNotEmpty
+                        ? viewModel.userName[0].toUpperCase()
+                        : 'U',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  navigationService.navigateToNotificationView();
+                },
+                icon: Icon(Icons.notifications_outlined, color: Colors.white),
+              ),
+              IconButton(
+                onPressed: viewModel.logout,
+                icon: Icon(Icons.logout, color: Colors.white),
+              ),
+            ],
+          ),
           body: viewModel.isBusy
-              ? Center(child: CircularProgressIndicator())
-              : Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // // Message Display
-                      // viewModel.message != null
-                      //     ? Text(
-                      //         viewModel.message!,
-                      //         style:
-                      //             TextStyle(fontSize: 16, color: Colors.green),
-                      //       )
-                      //     : SizedBox.shrink(),
-                      SizedBox(height: 20),
-
-                      Container(
-                        width: 200,
-                        height: 200,
-                        // decoration: BoxDecoration(
-                        //   borderRadius: BorderRadius.circular(15),
-                        //   image: DecorationImage(
-                        //     image: AssetImage('assets/your_image.jpg'),
-                        //     fit: BoxFit.cover,
-                        //   ),
-                        // ),
-                        child: Card(
-                          color: Colors.black12,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
+              ? Center(child: CircularProgressIndicator(color: Colors.white))
+              : SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 40),
+                  Text(
+                    'Your shield in every step',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  SizedBox(height: 60),
+                  Center(
+                    child: Container(
+                      width: 280,
+                      height: 280,
+                      decoration: BoxDecoration(
+                        color: Colors.white10,
+                        borderRadius: BorderRadius.circular(140),
+                        border: Border.all(
+                          color: Colors.white24,
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.1),
+                            blurRadius: 20,
+                            spreadRadius: 5,
                           ),
-                          elevation: 4,
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => LocationView(),
-                                ),
-                              );
-                            },
-                            child: Center(
-                              child: Text(
-                                'Start',
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(140),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => LocationView(),
+                              ),
+                            );
+                          },
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.shield_outlined,
+                                size: 80,
+                                color: Colors.white,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'START',
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  color: Colors.white,
+                                  fontSize: 28,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green,
+                                  letterSpacing: 2,
                                 ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  SizedBox(height: 60),
+                  Container(
+                    padding: EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Emergency Contacts',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Add trusted contacts who will be notified in case of emergency.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           floatingActionButton: FloatingActionButton(
             onPressed: () {
               _showSearchBottomSheet(context, viewModel);
             },
-            backgroundColor: Colors.green,
-            child: Icon(Icons.add),
+            backgroundColor: Colors.white,
+            child: Icon(Icons.add, color: Colors.black),
           ),
         );
       },
     );
   }
-  // Show dialog to add emergency contact
 
   void _showSearchBottomSheet(BuildContext context, HomeViewModel viewModel) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.black,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
+      ),
       builder: (context) {
         return Padding(
-          padding: MediaQuery.of(context).viewInsets, // Adjust for keyboard
+          padding: MediaQuery.of(context).viewInsets,
           child: Container(
-            height: MediaQuery.of(context).size.height * 0.6, // Limit height
-            padding: const EdgeInsets.all(16),
+            height: MediaQuery.of(context).size.height * 0.6,
+            padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Search Input Field
+                Text(
+                  "Add Emergency Contact",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 24),
                 TextField(
+                  style: TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     labelText: "Search for User",
-                    border: OutlineInputBorder(),
-                    suffixIcon: Icon(Icons.search),
+                    labelStyle: TextStyle(color: Colors.white70),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.white24),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.white24),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    suffixIcon: Icon(Icons.search, color: Colors.white70),
                   ),
                   onChanged: (query) {
-                    String currentUserId =
-                        FirebaseAuth.instance.currentUser?.uid ??
-                            ''; // Get current user's ID
-                    viewModel.searchUser(query,
-                        currentUserId); // Pass both query and currentUserId
+                    String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                    viewModel.searchUser(query, currentUserId);
                   },
                 ),
-                const SizedBox(height: 16),
-                // Title for search results
-                Text(
-                  "Search Results",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                // Search Results List
+                SizedBox(height: 24),
                 Expanded(
                   child: viewModel.searchResults.isEmpty
-                      ? Center(child: Text("No users found"))
+                      ? Center(
+                    child: Text(
+                      "No users found",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  )
                       : ListView.separated(
-                          itemCount: viewModel.searchResults.length,
-                          separatorBuilder: (_, __) => Divider(),
-                          itemBuilder: (context, index) {
-                            final user = viewModel.searchResults[index];
-                            return ListTile(
-                              title: Text(user.name),
-                              trailing: ElevatedButton(
-                                onPressed: () {
-                                  if (user.isEmergencyContact) {
-                                    viewModel.removeEmergencyContact(user.id);
-                                  } else {
-                                    viewModel.addEmergencyContact(
-                                        context, user.id, user.name);
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: user.isEmergencyContact
-                                      ? Colors.red
-                                      : Colors.green,
-                                ),
-                                child: Text(
-                                  user.isEmergencyContact ? 'Remove' : 'Add',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            );
-                          },
+                    itemCount: viewModel.searchResults.length,
+                    separatorBuilder: (_, __) => Divider(color: Colors.white24),
+                    itemBuilder: (context, index) {
+                      final user = viewModel.searchResults[index];
+                      return ListTile(
+                        title: Text(
+                          user.name,
+                          style: TextStyle(color: Colors.white),
                         ),
+                        trailing: ElevatedButton(
+                          onPressed: () {
+                            if (user.isEmergencyContact) {
+                              viewModel.removeEmergencyContact(user.id);
+                            } else {
+                              viewModel.addEmergencyContact(
+                                  context, user.id, user.name);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: user.isEmergencyContact
+                                ? Colors.red
+                                : Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            user.isEmergencyContact ? 'Remove' : 'Add',
+                            style: TextStyle(
+                              color: user.isEmergencyContact
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),

@@ -29,6 +29,7 @@ class HomeViewModel extends ReactiveViewModel {
   List<UserModel> get searchResults => _searchResults;
   List<String> _emergencyContactIds = [];
   UserModel loggedInUser;
+  String userName = 'Loading...';
   HomeViewModel(this.loggedInUser);
 
   String get currentUserId => _auth.currentUser?.uid ?? '';
@@ -42,6 +43,35 @@ class HomeViewModel extends ReactiveViewModel {
 
   List<Map<String, dynamic>> notifications = [];
 
+
+  Future<void> fetchUserName() async {
+    setBusy(true); // Show loading indicator
+
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        userName = 'Unknown User'; // Handle null case
+        return;
+      }
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        userName = data['name'] ?? 'Unknown User';
+      } else {
+        userName = 'User not found';
+      }
+    } catch (e) {
+      userName = 'Error fetching name';
+    } finally {
+      setBusy(false); // Hide loading indicator
+      notifyListeners(); // Notify UI to rebuild
+    }
+  }
   void listenToNotifications() {
     final userId = _auth.currentUser?.uid;
 
@@ -112,6 +142,7 @@ class HomeViewModel extends ReactiveViewModel {
   }
 
   Future<void> logout() async {
+    // Show confirmation dialog before logging out
     DialogResponse? response = await _dialogService.showConfirmationDialog(
       title: 'Logout',
       description: 'Are you sure you want to logout?',
@@ -120,12 +151,30 @@ class HomeViewModel extends ReactiveViewModel {
     );
 
     if (response != null && response.confirmed) {
-      setBusy(true);
-      await _userService.logoutUser();
-      _navigationService.clearStackAndShow(Routes.loginView);
-      setBusy(false);
+      setBusy(true); // Indicate that the process is busy
+      try {
+        // Sign out from Firebase
+        await FirebaseAuth.instance.signOut();
+
+        // Ensure Firestore operations are not performed after logging out
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser == null) {
+          // If the user is null, log out was successful
+          print("User is logged out");
+        }
+
+        // Optionally, navigate to the login view
+        _navigationService.clearStackAndShow(Routes.loginView);
+
+        setBusy(false); // Reset busy state
+      } catch (error) {
+        // Handle any errors during logout
+        setBusy(false);
+        print('Error during logout: $error');
+      }
     }
   }
+
 
   Future<void> loadEmergencyContacts(String currentUserId) async {
     final snapshot = await FirebaseFirestore.instance
@@ -149,6 +198,40 @@ class HomeViewModel extends ReactiveViewModel {
       user.isEmergencyContact = _emergencyContactIds.contains(user.id);
     }
   }
+  Future<void> searchUser(String query, String currentUserId) async {
+    if (query.isEmpty) {
+      _searchResults = [];
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final lowerCaseQuery = query.toLowerCase();
+
+      // Fetch documents from Firestore
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .get(); // Get all user documents since name is nested
+
+      // Filter documents based on name
+      _searchResults = snapshot.docs
+          .where((doc) =>
+      doc.id != currentUserId && // Exclude the current user
+          (doc.data()['name'] as String)
+              .toLowerCase()
+              .startsWith(lowerCaseQuery)) // Case-insensitive search
+          .map((doc) => UserModel.fromJson(doc.data(), doc.id))
+          .toList();
+
+      _updateSearchResults(); // Update emergency contact status
+      notifyListeners(); // Notify listeners about the changes
+    } catch (e) {
+      print("Error searching users: $e");
+      _searchResults = [];
+      notifyListeners();
+    }
+  }
+
 
   Future<void> addEmergencyContact(
       BuildContext context, String userId, String userName) async {
@@ -159,26 +242,65 @@ class HomeViewModel extends ReactiveViewModel {
       return;
     }
 
-    // Add the contact to the logged-in user's emergencyContacts sub-collection
-    await FirebaseFirestore.instance
-        .collection('users') // Reference to users collection
-        .doc(loggedInUser.uid) // Use the logged-in user ID
-        .collection(
-            'emergencyContacts') // Access emergencyContacts sub-collection
-        .doc(userId) // Use the userId as the document ID for the contact
-        .set({
-      'contactId':
-          userId, // Store contact information here (you can add more fields)
-      'addedAt': FieldValue.serverTimestamp(), // Optionally add a timestamp
-    });
-    // Update the emergency contact list and UI
-    _emergencyContactIds.add(userId);
-    _updateSearchResults();
-    notifyListeners();
-    _snackbarService.showSnackbar(
-        message: "${userName} added as emergency contact");
-    Navigator.pop(context);
+    try {
+      // Add the contact to the logged-in user's emergencyContacts sub-collection
+      await FirebaseFirestore.instance
+          .collection('users') // Reference to users collection
+          .doc(loggedInUser.uid) // Use the logged-in user ID
+          .collection('emergencyContacts') // Access emergencyContacts sub-collection
+          .doc(userId) // Use the userId as the document ID for the contact
+          .set({
+        'contactId': userId, // Store contact information here
+        'addedAt': FieldValue.serverTimestamp(), // Optionally add a timestamp
+      });
+
+      // Update the emergency contact list
+      _emergencyContactIds.add(userId);
+      _updateSearchResults();
+
+      // Notify UI
+      notifyListeners();
+      _snackbarService.showSnackbar(
+          message: "${userName} added as emergency contact");
+
+      // Clear search results and dismiss the bottom sheet
+      _searchResults = [];
+      notifyListeners(); // Update the UI to reflect the cleared results
+      Navigator.pop(context);
+    } catch (e) {
+      print("Error adding emergency contact: $e");
+    }
   }
+
+  // Future<void> addEmergencyContact(
+  //     BuildContext context, String userId, String userName) async {
+  //   final loggedInUser = _auth.currentUser;
+  //
+  //   if (loggedInUser == null) {
+  //     print('No logged-in user found');
+  //     return;
+  //   }
+  //
+  //   // Add the contact to the logged-in user's emergencyContacts sub-collection
+  //   await FirebaseFirestore.instance
+  //       .collection('users') // Reference to users collection
+  //       .doc(loggedInUser.uid) // Use the logged-in user ID
+  //       .collection(
+  //           'emergencyContacts') // Access emergencyContacts sub-collection
+  //       .doc(userId) // Use the userId as the document ID for the contact
+  //       .set({
+  //     'contactId':
+  //         userId, // Store contact information here (you can add more fields)
+  //     'addedAt': FieldValue.serverTimestamp(), // Optionally add a timestamp
+  //   });
+  //   // Update the emergency contact list and UI
+  //   _emergencyContactIds.add(userId);
+  //   _updateSearchResults();
+  //   notifyListeners();
+  //   _snackbarService.showSnackbar(
+  //       message: "${userName} added as emergency contact");
+  //   Navigator.pop(context);
+  // }
 
   Future<void> removeEmergencyContact(String userId) async {
     final loggedInUser = _auth.currentUser;
@@ -196,7 +318,6 @@ class HomeViewModel extends ReactiveViewModel {
             'emergencyContacts') // Access emergencyContacts sub-collection
         .doc(userId) // Use the userId as the document ID for the contact
         .delete();
-
     // Update the emergency contact list and UI
     _emergencyContactIds.remove(userId);
     _updateSearchResults();
@@ -214,26 +335,26 @@ class HomeViewModel extends ReactiveViewModel {
   bool isEmergencyContact(String userId) {
     return _emergencyContactIds.contains(userId);
   }
-
-  Future<void> searchUser(String query, String currentUserId) async {
-    // Fetch matching users from Firestore, excluding the current user
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .where('name', isGreaterThanOrEqualTo: query)
-        .where('name',
-            isLessThanOrEqualTo:
-                query + '\uf8ff') // For case-insensitive search
-        .get();
-
-    _searchResults = snapshot.docs
-        .where((doc) => doc.id != currentUserId) // Exclude the current user
-        .map((doc) => UserModel.fromJson(doc.data(), doc.id))
-        .toList();
-
-    // Update each user's emergency contact status
-    _updateSearchResults();
-    notifyListeners(); // Update the search results
-  }
+  //
+  // Future<void> searchUser(String query, String currentUserId) async {
+  //   // Fetch matching users from Firestore, excluding the current user
+  //   final snapshot = await FirebaseFirestore.instance
+  //       .collection('users')
+  //       .where('name', isGreaterThanOrEqualTo: query)
+  //       .where('name',
+  //           isLessThanOrEqualTo:
+  //               query + '\uf8ff') // For case-insensitive search
+  //       .get();
+  //
+  //   _searchResults = snapshot.docs
+  //       .where((doc) => doc.id != currentUserId) // Exclude the current user
+  //       .map((doc) => UserModel.fromJson(doc.data(), doc.id))
+  //       .toList();
+  //
+  //   // Update each user's emergency contact status
+  //   _updateSearchResults();
+  //   notifyListeners(); // Update the search results
+  // }
 
   @override
   List<ReactiveServiceMixin> get reactiveServices => [];
