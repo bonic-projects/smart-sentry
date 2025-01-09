@@ -302,7 +302,7 @@ class HomeViewModel extends ReactiveViewModel {
   //   Navigator.pop(context);
   // }
 
-  Future<void> removeEmergencyContact(String userId) async {
+  Future<void> removeEmergencyContact(BuildContext context,String userId,String userName) async {
     final loggedInUser = _auth.currentUser;
 
     if (loggedInUser == null) {
@@ -322,6 +322,13 @@ class HomeViewModel extends ReactiveViewModel {
     _emergencyContactIds.remove(userId);
     _updateSearchResults();
     notifyListeners();
+    _snackbarService.showSnackbar(
+        message: "${userName} removed from emergency contact");
+
+    // Clear search results and dismiss the bottom sheet
+    _searchResults = [];
+    notifyListeners(); // Update the UI to reflect the cleared results
+    Navigator.pop(context);
   }
 
   // Future<void> saveEmergencyContacts() async {

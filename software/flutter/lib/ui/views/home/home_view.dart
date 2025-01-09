@@ -273,7 +273,7 @@ class HomeView extends StatelessWidget {
                         trailing: ElevatedButton(
                           onPressed: () {
                             if (user.isEmergencyContact) {
-                              viewModel.removeEmergencyContact(user.id);
+                              viewModel.removeEmergencyContact(context,user.id,user.name);
                             } else {
                               viewModel.addEmergencyContact(
                                   context, user.id, user.name);
