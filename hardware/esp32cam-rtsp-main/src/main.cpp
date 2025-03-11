@@ -47,10 +47,9 @@ auto param_vflip = iotwebconf::Builder<iotwebconf::CheckboxTParameter>("vm").lab
 auto param_dcw = iotwebconf::Builder<iotwebconf::CheckboxTParameter>("dcw").label("Downsize enable").defaultValue(DEFAULT_DCW).build();
 auto param_colorbar = iotwebconf::Builder<iotwebconf::CheckboxTParameter>("cb").label("Colorbar").defaultValue(DEFAULT_COLORBAR).build();
 
-#define BUTTON_PIN 9  // Replace with the actual GPIO pin number
+#define BUTTON_PIN 14 
 
 bool isButtonPressed = false;
-unsigned long lastToggleTime = 0;
 
 
 // Camera
@@ -317,14 +316,7 @@ void on_config_saved()
   update_camera_settings();
 }
 
-// void handle_switch() {
-//     isButtonPressed = (digitalRead(BUTTON_PIN) == LOW);  // Assuming LOW when pressed
 
-//     String response = isButtonPressed ? "Button Pressed" : "Button Released";
-//     web_server.send(200, "text/plain", response);
-//     // String response = isButtonPressed ? "Button Pressed" : "Button Released";
-//     // web_server.send(200, "text/plain", response);
-// }
 
 void handle_switch() {
     isButtonPressed = (digitalRead(BUTTON_PIN) == LOW);  // Assuming LOW when pressed
@@ -440,14 +432,7 @@ void setup()
                         { iotWebConf.handleNotFound(); });
 }
 
-// void loop()
-// {
-//     web_server.handleClient();
-//   iotWebConf.doLoop();
 
-//   if (camera_server)
-//     camera_server->doLoop();
-// }
 void loop() {
     web_server.handleClient();
     iotWebConf.doLoop();
@@ -456,15 +441,5 @@ void loop() {
         camera_server->doLoop();
     }
 
-    // // Toggle button state every 5 seconds
-    // if (millis() - lastToggleTime >= 5000) {
-    //     lastToggleTime = millis();
-    //     isButtonPressed = !isButtonPressed;
-    //     Serial.print("Button State Toggled: ");
-    //     Serial.println(isButtonPressed ? "Pressed" : "Released");
-    // }
-
-    // isButtonPressed = (digitalRead(BUTTON_PIN) == LOW);  // Assuming LOW when pressed
-    // String response = isButtonPressed ? "Button Pressed" : "Button Released";
-    // Serial.println(response);
+   
 }
